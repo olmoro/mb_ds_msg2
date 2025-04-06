@@ -1,3 +1,4 @@
+#include "project_config.h"
 #include "esp_log.h"
 #include "driver/uart.h"
 #include "freertos/FreeRTOS.h"
@@ -11,13 +12,13 @@
 
 static const char *TAG = "MODBUS_SLAVE";
 
-// Настройки UART
-#define MB_UART_NUM        UART_NUM_2
-#define MB_UART_BAUD_RATE  9600
-#define MB_UART_RXD_PIN    16
-#define MB_UART_TXD_PIN    17
-#define MB_QUEUE_SIZE      5
-#define MB_FRAME_TIMEOUT_MS 4  // 3.5 символа при 9600 бод
+// // Настройки UART
+// #define MB_UART_NUM        UART_NUM_2
+// #define MB_UART_BAUD_RATE  9600
+// #define MB_UART_RXD_PIN    16
+// #define MB_UART_TXD_PIN    17
+// #define MB_QUEUE_SIZE      5
+// #define MB_FRAME_TIMEOUT_MS 4  // 3.5 символа при 9600 бод
 
 // Структура для передачи фреймов между задачами
 typedef struct {
@@ -86,7 +87,7 @@ static void frame_processor_task(void *arg) {
 
             // Отправка ответа с синхронизацией
             xSemaphoreTake(uart_mutex, portMAX_DELAY);
-            uart_write_bytes(MB_UART_NUM, (const char*)response, sizeof(response));
+            uart_write_bytes(MB_PORT_NUM, (const char*)response, sizeof(response));
             xSemaphoreGive(uart_mutex);
 
             free(frame.data);
@@ -102,7 +103,7 @@ static void uart_reader_task(void *arg) {
 
     while(1) {
         uint8_t buf[128];
-        int len = uart_read_bytes(MB_UART_NUM, buf, sizeof(buf), pdMS_TO_TICKS(1));
+        int len = uart_read_bytes(MB_PORT_NUM, buf, sizeof(buf), pdMS_TO_TICKS(1));
         
         if(len > 0) {
             // Копирование данных в буфер фрейма
@@ -153,18 +154,29 @@ void app_main(void) {
     // ESP_ERROR_CHECK(ret);
 
     // Настройка UART
-    uart_config_t uart_config = {
-        .baud_rate = MB_UART_BAUD_RATE,
+    uart_config_t uart_mb_config = {
+        .baud_rate = MB_BAUD_RATE,
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT,
+        .rx_flow_ctrl_thresh = 122,
     };
 
-    ESP_ERROR_CHECK(uart_driver_install(MB_UART_NUM, 512, 512, 0, NULL, 0));
-    ESP_ERROR_CHECK(uart_param_config(MB_UART_NUM, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(MB_UART_NUM, MB_UART_TXD_PIN, MB_UART_RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+//     int intr_alloc_flags = 0;
+
+// #if CONFIG_UART_ISR_IN_IRAM
+//     intr_alloc_flags = ESP_INTR_FLAG_IRAM;
+// #endif
+
+
+    ESP_ERROR_CHECK(uart_driver_install(MB_PORT_NUM, BUF_SIZE, BUF_SIZE, MB_QUEUE_SIZE, NULL, 0));
+    ESP_ERROR_CHECK(uart_set_pin(MB_PORT_NUM, CONFIG_MB_UART_TXD, CONFIG_MB_UART_RXD, CONFIG_MB_UART_RTS, 32));   // IO32 свободен (трюк)
+    ESP_ERROR_CHECK(uart_set_mode(MB_PORT_NUM, UART_MODE_RS485_HALF_DUPLEX)); // activate RS485 half duplex in the driver
+    ESP_ERROR_CHECK(uart_param_config(MB_PORT_NUM, &uart_mb_config));
+    ESP_LOGI(TAG, "slave_uart initialized.");
+
+
 
     // Создание очереди и мьютекса
     frame_queue = xQueueCreate(MB_QUEUE_SIZE, sizeof(mb_frame_t));

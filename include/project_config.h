@@ -17,11 +17,8 @@
 // ---------------------------------------------------------------------------------
 //                                  Версии 
 // ---------------------------------------------------------------------------------
-#define APP_VERSION "MB_DS_MSG 20250405.07"
-// 202500405.06:  add: init sp_uart                         RAM:  3.4%  Flash: 13.0%  
-// 202500404.04 05:  add: slave, processing                 RAM:  3.4%  Flash: 13.0%  
-// 202500404.02:  Received PDU (5 bytes): 06 00 01 00 01    RAM:  3.4%  Flash: 12.8%  
-// 202500403.01:  Проверка DeepSeek msg                     RAM:  3.4%  Flash: 12.8%
+#define APP_VERSION "MB_DS_MSG2 20250405.00"
+// 202500505.00:  Проверка DeepSeek msg                     RAM:  3.5%  Flash: 19.2%
 
 
 
@@ -66,7 +63,7 @@ typedef struct {
 //                                    MODBUS 
 // ---------------------------------------------------------------------------------
 
-#define MB_PORT_NUM UART_NUM_1
+#define MB_PORT_NUM  UART_NUM_1
 #define MB_BAUD_RATE 9600
 #define SLAVE_ADDRESS 0x01
 #define MB_QUEUE_SIZE 10
